@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简诗词密码</title>
+    <style>
+        /* --- 基础设置 --- */
+        :root {
+            --bg-color: #FDFBF7; /* 羊皮纸米色 */
+            --text-color: #2c2c2c; /* 墨黑 */
+            --accent-color: #8E443D; /* 丹红 (更符合中国风/诗词感) */
+            --accent-hover: #6c342f;
+            --border-color: #dcdcdc;
+            --sub-text: #888;
+            --font-serif: "Georgia", "Times New Roman", "Songti SC", "SimSun", serif;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- 容器 --- */
+        .container {
+            width: 90%;
+            max-width: 550px;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-family: var(--font-serif);
+            font-weight: normal;
+            font-size: 1.8rem;
+            margin-bottom: 2.5rem;
+            color: #444;
+            letter-spacing: 3px;
+        }
+
+        /* --- 密码显示区 (核心) --- */
+        .display-area {
+            margin-bottom: 2.5rem;
+            position: relative;
+            height: 140px; /* 固定高度防止抖动 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .password-box {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .password-box:active {
+            transform: scale(0.98);
+        }
+
+        #password-display {
+            font-family: var(--font-serif); /* 衬线体，诗人气质 */
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: var(--text-color);
+            word-break: break-all;
+            line-height: 1.1;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        /* 动画状态类 */
+        .fade-out {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        /* 中文翻译字幕 */
+        #poetic-meaning {
+            font-family: var(--font-serif);
+            font-size: 1rem;
+            color: var(--accent-color);
+            margin-top: 12px;
+            height: 1.5em;
+            opacity: 0.8;
+            letter-spacing: 4px;
+            font-weight: normal;
+        }
+
+        .copy-hint {
+            font-size: 0.8rem;
+            color: var(--sub-text);
+            margin-top: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-family: var(--font-sans);
+        }
+
+        .copy-hint.visible {
+            opacity: 1;
+            color: #27ae60;
+        }
+
+        /* --- 按钮 --- */
+        .btn-main {
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 1rem 3.5rem;
+            font-size: 1.2rem;
+            border-radius: 4px; /* 稍微方一点，更有书卷气 */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(142, 68, 61, 0.2);
+            letter-spacing: 2px;
+            font-family: var(--font-serif);
+        }
+
+        .btn-main:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(142, 68, 61, 0.3);
+        }
+
+        /* --- 选项控制区 --- */
+        details {
+            margin-top: 3.5rem;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            padding-top: 1.5rem;
+            width: 100%;
+        }
+
+        summary {
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #999;
+            list-style: none;
+            outline: none;
+            font-family: var(--font-sans);
+        }
+        
+        summary:hover { color: #666; }
+
+        .options-panel {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            padding: 0 1rem;
+        }
+
+        .control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        /* 模式切换 Pill Switch */
+        .mode-switch {
+            background: #eee;
+            border-radius: 30px;
+            padding: 4px;
+            display: flex;
+            position: relative;
+            cursor: pointer;
+            width: 200px;
+            margin: 0 auto 2rem auto; /* 居中 */
+        }
+
+        .mode-option {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            z-index: 2;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+            user-select: none;
+        }
+
+        .mode-bg {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 50%; /* 减去padding */
+            height: calc(100% - 8px);
+            background: #fff;
+            border-radius: 25px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 1;
+            width: calc(50% - 4px);
+        }
+
+        /* 模式激活状态 */
+        .mode-switch[data-mode="pinyin"] .mode-bg {
+            transform: translateX(100%);
+        }
+        .mode-active { font-weight: bold; color: var(--text-color); }
+        .mode-inactive { color: #999; }
+
+        /* 开关样式 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ddd;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>PASSWORD POETRY</h1>
+
+        <div class="mode-switch" id="mode-switch" data-mode="english" onclick="toggleMode()">
+            <div class="mode-bg"></div>
+            <div class="mode-option" id="opt-eng">英文模式</div>
+            <div class="mode-option" id="opt-pinyin">诗词模式</div>
+        </div>
+
+        <div class="display-area">
+            <div class="password-box" id="copy-trigger" title="点击复制">
+                <div id="password-display">Loading...</div>
+                <div id="poetic-meaning"></div>
+            </div>
+            <div class="copy-hint" id="copy-msg">点击复制</div>
+        </div>
+
+        <button class="btn-main" onclick="animateAndGenerate()">吟唱一首</button>
+
+        <details>
+            <summary>调律 (高级选项)</summary>
+            <div class="options-panel">
+                <div class="control-group">
+                    <label>包含特殊符号 (!@#)</label>
+                    <label class="switch">
+                        <input type="checkbox" id="symbol-check" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label>包含数字年份</label>
+                    <label class="switch">
+                        <input type="checkbox" id="number-check" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <script>
+        // --- 词库配置 ---
+        
+        // 1. 英文模式 (驼峰友好)
+        const engAdjectives = [
+            "Happy", "Blue", "Calm", "Brave", "Green", "Quiet", "Red", "Cool", "Wise", "Lucky", 
+            "Safe", "Kind", "Swift", "Wild", "Soft", "Gold", "Pure", "Sharp", "Deep", "Rich", 
+            "Warm", "Cold", "Snowy", "Misty", "Holy", "Dark", "Bright", "Grand"
+        ];
+        const engNouns = [
+            "Tiger", "Eagle", "Moon", "River", "Sky", "Ocean", "Hill", "Lion", "Wolf", "Fox",
+            "Bear", "Hawk", "Star", "Tree", "Leaf", "Fire", "Ice", "Rain", "Bird", "Fish", 
+            "Whale", "Ship", "Hero", "Wind", "Rose", "Silk", "Jade", "Song"
+        ];
+
+        // 2. 拼音诗词模式 (Pinyin + 中文原意)
+        // 选取意境优美、拼音较短的双字词
+        const poeticWords = [
+            { py: "QingFeng", cn: "清风" }, { py: "MingYue", cn: "明月" },
+            { py: "BaiYun", cn: "白云" }, { py: "CangHai", cn: "沧海" },
+            { py: "GaoShan", cn: "高山" }, { py: "LiuShui", cn: "流水" },
+            { py: "ChangHe", cn: "长河" }, { py: "LuoRi", cn: "落日" },
+            { py: "ChunYu", cn: "春雨" }, { py: "XingChen", cn: "星辰" },
+            { py: "JiangHu", cn: "江湖" }, { py: "TianYa", cn: "天涯" },
+            { py: "GuCheng", cn: "孤城" }, { py: "YeYu", cn: "夜雨" },
+            { py: "WeiFeng", cn: "微风" }, { py: "ChenXi", cn: "晨曦" },
+            { py: "MuGuang", cn: "暮光" }, { py: "LiuNian", cn: "流年" },
+            { py: "FanHua", cn: "繁花" }, { py: "QingShan", cn: "青山" }
+        ];
+
+        const symbols = ["!", "@", "#", "$", "%", "*", "?"];
+
+        // --- 状态 ---
+        let currentMode = 'english'; // 'english' or 'pinyin'
+
+        // --- DOM 元素 ---
+        const displayEl = document.getElementById('password-display');
+        const meaningEl = document.getElementById('poetic-meaning');
+        const copyMsgEl = document.getElementById('copy-msg');
+        const copyTrigger = document.getElementById('copy-trigger');
+        const symbolCheck = document.getElementById('symbol-check');
+        const numberCheck = document.getElementById('number-check');
+        const modeSwitch = document.getElementById('mode-switch');
+
+        // --- 工具函数 ---
+        function getRandom(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        // --- 模式切换逻辑 ---
+        function toggleMode() {
+            const optEng = document.getElementById('opt-eng');
+            const optPinyin = document.getElementById('opt-pinyin');
+
+            if (currentMode === 'english') {
+                currentMode = 'pinyin';
+                modeSwitch.setAttribute('data-mode', 'pinyin');
+                optEng.style.fontWeight = 'normal';
+                optPinyin.style.fontWeight = 'bold';
+            } else {
+                currentMode = 'english';
+                modeSwitch.setAttribute('data-mode', 'english');
+                optEng.style.fontWeight = 'bold';
+                optPinyin.style.fontWeight = 'normal';
+            }
+            animateAndGenerate();
+        }
+
+        // --- 核心生成逻辑 ---
+        function generatePasswordLogic() {
+            const useSymbols = symbolCheck.checked;
+            const useNumbers = numberCheck.checked;
+            
+            let password = "";
+            let meaningText = ""; // 仅用于拼音模式
+
+            if (currentMode === 'english') {
+                // 英文逻辑: Adj + Noun + [Num] + [Sym]
+                const part1 = getRandom(engAdjectives);
+                const part2 = getRandom(engNouns);
+                password = part1 + part2; // 直接连接，无"-"
+                meaningText = ""; // 英文模式不显示中文解释
+            } else {
+                // 拼音逻辑: Word1 + Word2 + [Num] + [Sym]
+                // 确保两个词不重复
+                let word1 = getRandom(poeticWords);
+                let word2 = getRandom(poeticWords);
+                while(word1 === word2) {
+                    word2 = getRandom(poeticWords);
+                }
+                
+                password = word1.py + word2.py;
+                meaningText = `${word1.cn} · ${word2.cn}`;
+            }
+
+            // 添加数字 (年份感: 19xx, 20xx, 或随机两位)
+            if (useNumbers) {
+                let num;
+                if (Math.random() > 0.5) {
+                    num = Math.floor(Math.random() * 90) + 10; // 10-99
+                } else {
+                    // 偶尔生成年份风格，增加故事感
+                    num = 1900 + Math.floor(Math.random() * 100); // 1900-1999
+                    if(Math.random() > 0.8) num = 2024; 
+                }
+                password += num; // 直接连接
+            }
+
+            // 添加符号
+            if (useSymbols) {
+                password += getRandom(symbols);
+            }
+
+            return { password, meaning: meaningText };
+        }
+
+        // --- 动画与渲染 ---
+        function animateAndGenerate() {
+            // 1. 淡出
+            displayEl.classList.add('fade-out');
+            meaningEl.classList.add('fade-out');
+
+            // 2. 等待动画过半后更换文字
+            setTimeout(() => {
+                const result = generatePasswordLogic();
+                
+                displayEl.textContent = result.password;
+                meaningEl.textContent = result.meaning;
+
+                // 3. 淡入
+                displayEl.classList.remove('fade-out');
+                meaningEl.classList.remove('fade-out');
+            }, 200);
+        }
+
+        // --- 复制功能 ---
+        async function copyToClipboard() {
+            const text = displayEl.textContent;
+            if (!text) return;
+            
+            try {
+                await navigator.clipboard.writeText(text);
+                copyMsgEl.textContent = "已复制到剪贴板";
+                copyMsgEl.classList.add('visible');
+                setTimeout(() => {
+                    copyMsgEl.classList.remove('visible');
+                    setTimeout(() => {
+                       copyMsgEl.textContent = "点击复制"; 
+                    }, 300);
+                }, 1500);
+            } catch (err) {
+                copyMsgEl.textContent = "复制失败";
+                copyMsgEl.classList.add('visible');
+            }
+        }
+
+        // --- 初始化 ---
+        copyTrigger.addEventListener('click', copyToClipboard);
+        
+        // 初始状态设为英文高亮
+        document.getElementById('opt-eng').style.fontWeight = 'bold';
+        animateAndGenerate();
+
+    </script>
+</body>
+</html>
